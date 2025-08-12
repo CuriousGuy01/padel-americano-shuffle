@@ -1,5 +1,5 @@
-# Save this file as padel_shuffle.py
-# Run with: streamlit run padel_shuffle.py
+# padel_shuffle.py
+# Run locally with: streamlit run padel_shuffle.py
 
 import streamlit as st
 import random
@@ -20,7 +20,7 @@ if "num_courts" not in st.session_state:
 
 st.title("🎾 Padel Americano Match Generator")
 
-# Step 1: Setup (only runs once)
+# Step 1: Setup form (runs only once)
 if not st.session_state.players:
     with st.form("setup_form"):
         num_players = st.number_input("Number of players:", min_value=4, step=1)
@@ -36,15 +36,16 @@ if not st.session_state.players:
             st.session_state.games_played = {p: 0 for p in player_names}
             st.session_state.num_courts = num_courts
             st.session_state.rest_count = max(0, num_players - (num_courts * 4))
-            st.experimental_rerun()
+            st.rerun()  # ✅ Updated from experimental_rerun
 
 # Step 2: Show current round
 else:
     st.subheader(f"Round {st.session_state.round_num}")
 
-    # Sort by fewest games played to balance
+    # Sort players by fewest games played for balance
     st.session_state.players.sort(key=lambda x: (st.session_state.games_played[x], random.random()))
 
+    # Determine resting players (if needed)
     resting = st.session_state.players[-st.session_state.rest_count:] if st.session_state.rest_count > 0 else []
     active = st.session_state.players[:-st.session_state.rest_count] if st.session_state.rest_count > 0 else st.session_state.players[:]
     random.shuffle(active)
@@ -56,17 +57,19 @@ else:
         for p in (p1, p2, p3, p4):
             st.session_state.games_played[p] += 1
 
+    # Display matches for this round
     for court, match in enumerate(matches, 1):
         (a, b), (c, d) = match
         st.write(f"**Court {court}:** {a} & {b} vs {c} & {d}")
     if resting:
         st.warning(f"Resting: {', '.join(resting)}")
 
+    # Buttons for navigation
     col1, col2 = st.columns(2)
     with col1:
         if st.button("Next Round"):
             st.session_state.round_num += 1
-            st.experimental_rerun()
+            st.rerun()  # ✅ Updated from experimental_rerun
     with col2:
         if st.button("Show Summary"):
             summary = "\n".join([f"{p}: {st.session_state.games_played[p]} games" for p in st.session_state.players])
