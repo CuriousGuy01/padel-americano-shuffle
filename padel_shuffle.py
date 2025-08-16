@@ -65,7 +65,7 @@ else:
         for c in range(st.session_state.num_courts):
             group = active[c*4:(c+1)*4]
             if len(group) < 4:  # not enough players for this court
-        continue
+                continue
             p1, p2, p3, p4 = group
             matches.append(((p1, p2), (p3, p4)))
             for p in (p1, p2, p3, p4):
@@ -119,4 +119,5 @@ else:
     leaderboard = sorted(st.session_state.scores.items(), key=lambda x: x[1], reverse=True)
     for rank, (player, score) in enumerate(leaderboard, 1):
         st.write(f"{rank}. **{player}** — {score} pts")
+
 
