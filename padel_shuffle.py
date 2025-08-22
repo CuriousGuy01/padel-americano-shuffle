@@ -1,123 +1,124 @@
-# padel_shuffle.py
-# Run locally with: streamlit run padel_shuffle.py
-
 import streamlit as st
 import random
 
-st.set_page_config(page_title="Padel Americano Shuffle", page_icon="🎾", layout="centered")
-
-# --- Session state ---
+# ============================================================
+# 🔹 INITIAL SETUP (Session State)
+# ============================================================
 if "players" not in st.session_state:
     st.session_state.players = []
-if "games_played" not in st.session_state:
-    st.session_state.games_played = {}
-if "scores" not in st.session_state:
-    st.session_state.scores = {}
-if "rest_count" not in st.session_state:
-    st.session_state.rest_count = 0
-if "round_num" not in st.session_state:
-    st.session_state.round_num = 1
 if "num_courts" not in st.session_state:
     st.session_state.num_courts = 1
-if "current_matches" not in st.session_state:
-    st.session_state.current_matches = []
+if "round" not in st.session_state:
+    st.session_state.round = 0
+if "scores" not in st.session_state:
+    st.session_state.scores = {}
+if "leaderboard" not in st.session_state:
+    st.session_state.leaderboard = {}
+if "game_point" not in st.session_state:
+    st.session_state.game_point = 15   # NEW: Game Point Limit
 
-st.title("🎾 Padel Americano Match Generator with Scoring")
+st.title("🎾 Padel Americano Shuffle")
 
-# --- Step 1: Setup ---
-if not st.session_state.players:
-    with st.form("setup_form"):
-        num_players = st.number_input("Number of players:", min_value=4, step=1)
-        num_courts = st.number_input("Number of courts:", min_value=1, step=1)
+# ============================================================
+# 🔹 TOURNAMENT SETUP FORM
+# ============================================================
+with st.form("setup"):
+    names = st.text_area("Enter player names (one per line):")
+    num_courts = st.number_input("Number of courts", 1, 10, 1)
 
-        player_names = []
-        for i in range(num_players):
-            player_names.append(st.text_input(f"Player {i+1} name:"))
+    # NEW: Ask for Game Point
+    game_point = st.number_input("Game Point", 5, 30, 15)
 
-        submitted = st.form_submit_button("Start Tournament")
-        if submitted:
-            st.session_state.players = player_names
-            st.session_state.games_played = {p: 0 for p in player_names}
-            st.session_state.scores = {p: 0 for p in player_names}
-            st.session_state.num_courts = num_courts
-            st.session_state.rest_count = max(0, num_players - (num_courts * 4))
-            st.rerun()
+    start = st.form_submit_button("Start Tournament")
 
-# --- Step 2: Match display & scoring ---
-else:
-    st.subheader(f"Round {st.session_state.round_num}")
+    if start:
+        st.session_state.players = [n.strip() for n in names.splitlines() if n.strip()]
+        random.shuffle(st.session_state.players)
+        st.session_state.num_courts = num_courts
+        st.session_state.game_point = game_point
+        st.session_state.round = 1
+        st.session_state.scores = {}
+        st.session_state.leaderboard = {p: 0 for p in st.session_state.players}
+        st.rerun()
 
-    # If no current matches saved, generate them
-    if not st.session_state.current_matches:
-        st.session_state.players.sort(key=lambda x: (st.session_state.games_played[x], random.random()))
-        resting = st.session_state.players[-st.session_state.rest_count:] if st.session_state.rest_count > 0 else []
-        active = st.session_state.players[:-st.session_state.rest_count] if st.session_state.rest_count > 0 else st.session_state.players[:]
-        random.shuffle(active)
+# ============================================================
+# 🔹 ROUND HANDLING
+# ============================================================
+if st.session_state.round > 0:
+    st.subheader(f"Round {st.session_state.round}")
 
-        matches = []
-        for c in range(st.session_state.num_courts):
-            p1, p2, p3, p4 = active[c*4:(c+1)*4]
-            matches.append(((p1, p2), (p3, p4)))
-            for p in (p1, p2, p3, p4):
-                st.session_state.games_played[p] += 1
+    players = st.session_state.players.copy()
+    random.shuffle(players)
+    matches = []
+    for c in range(st.session_state.num_courts):
+        group = players[c*4:(c+1)*4]
+        if len(group) < 4:
+            continue
+        matches.append(((group[0], group[1]), (group[2], group[3])))
 
-        matches = []
-        for c in range(st.session_state.num_courts):
-            group = active[c*4:(c+1)*4]
-            if len(group) < 4:  # not enough players for this court
-                continue
-            p1, p2, p3, p4 = group
-            matches.append(((p1, p2), (p3, p4)))
-            for p in (p1, p2, p3, p4):
-                st.session_state.games_played[p] += 1
+    # ============================================================
+    # 🔹 MATCHES UI (NEW: Rolling Score Counter)
+    # ============================================================
+    for i, ((p1, p2), (p3, p4)) in enumerate(matches):
+        key = f"round{st.session_state.round}_court{i}"
+        if key not in st.session_state.scores:
+            st.session_state.scores[key] = [0, 0]  # [score team1, score team2]
 
+        st.write(f"**Court {i+1}: {p1}, {p2} vs {p3}, {p4}**")
 
-        st.session_state.current_matches = matches
-        st.session_state.resting_players = resting
+        col1, col_mid, col2 = st.columns([1, 0.3, 1])
 
-    # Score input form
-    with st.form("score_form"):
-        score_inputs = []
-        for court, match in enumerate(st.session_state.current_matches, 1):
-            (a, b), (c, d) = match
-            col1, col2, col3 = st.columns([3, 1, 3])
-            with col1:
-                st.markdown(f"**{a} & {b}**")
-            with col2:
-                score = st.text_input(f"Score Court {court}", key=f"score_{court}", placeholder="e.g. 6-3")
-                score_inputs.append((match, score))
-            with col3:
-                st.markdown(f"**{c} & {d}**")
+        # TEAM 1 SCORE COUNTER
+        with col1:
+            if st.button("⬆️", key=f"{key}_t1_up"):
+                if st.session_state.scores[key][0] < st.session_state.game_point:
+                    st.session_state.scores[key][0] += 1
+            st.markdown(
+                f"<h2 style='text-align:center;'>{st.session_state.scores[key][0]}</h2>",
+                unsafe_allow_html=True
+            )
+            if st.button("⬇️", key=f"{key}_t1_down"):
+                if st.session_state.scores[key][0] > 0:
+                    st.session_state.scores[key][0] -= 1
 
-        if st.session_state.resting_players:
-            st.warning(f"Resting: {', '.join(st.session_state.resting_players)}")
+        # "VS" LABEL
+        with col_mid:
+            st.markdown("<h3 style='text-align:center;'>vs</h3>", unsafe_allow_html=True)
 
-        submitted_scores = st.form_submit_button("Submit Scores & Next Round")
-        if submitted_scores:
-            # Process scores
-            for match, score in score_inputs:
-                (a, b), (c, d) = match
-                try:
-                    # Example format: "6-3" or "10-8"
-                    s1, s2 = map(int, score.strip().split("-"))
-                except:
-                    s1, s2 = 0, 0  # Invalid input defaults to 0-0
+        # TEAM 2 SCORE COUNTER
+        with col2:
+            if st.button("⬆️", key=f"{key}_t2_up"):
+                if st.session_state.scores[key][1] < st.session_state.game_point:
+                    st.session_state.scores[key][1] += 1
+            st.markdown(
+                f"<h2 style='text-align:center;'>{st.session_state.scores[key][1]}</h2>",
+                unsafe_allow_html=True
+            )
+            if st.button("⬇️", key=f"{key}_t2_down"):
+                if st.session_state.scores[key][1] > 0:
+                    st.session_state.scores[key][1] -= 1
 
-                st.session_state.scores[a] += s1
-                st.session_state.scores[b] += s1
-                st.session_state.scores[c] += s2
-                st.session_state.scores[d] += s2
+    # ============================================================
+    # 🔹 COMPLETE ROUND BUTTON
+    # ============================================================
+    if st.button("✅ Complete Round"):
+        for i, ((p1, p2), (p3, p4)) in enumerate(matches):
+            key = f"round{st.session_state.round}_court{i}"
+            s1, s2 = st.session_state.scores[key]
+            st.session_state.leaderboard[p1] += s1
+            st.session_state.leaderboard[p2] += s1
+            st.session_state.leaderboard[p3] += s2
+            st.session_state.leaderboard[p4] += s2
 
-            # Prepare for next round
-            st.session_state.round_num += 1
-            st.session_state.current_matches = []
-            st.rerun()
+        st.session_state.round += 1
+        st.rerun()
 
-    # Leaderboard display
-    st.markdown("---")
-    st.subheader("🏆 Leaderboard so far")
-    leaderboard = sorted(st.session_state.scores.items(), key=lambda x: x[1], reverse=True)
-    for rank, (player, score) in enumerate(leaderboard, 1):
-        st.write(f"{rank}. **{player}** — {score} pts")
-
-
+    # ============================================================
+    # 🔹 LEADERBOARD
+    # ============================================================
+    st.subheader("🏆 Leaderboard")
+    sorted_lb = sorted(
+        st.session_state.leaderboard.items(), key=lambda x: x[1], reverse=True
+    )
+    for name, score in sorted_lb:
+        st.write(f"{name}: {score}")
