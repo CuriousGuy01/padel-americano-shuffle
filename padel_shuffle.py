@@ -82,11 +82,19 @@ if st.session_state.round > 0:
         s1, s2 = st.session_state.scores[key]
         max_score = st.session_state.game_point
 
+        # Determine highlight colors
+        if s1 > s2:
+            color1, color2 = "#d4f7d4", "#f9d6d5"  # green, red
+        elif s2 > s1:
+            color1, color2 = "#f9d6d5", "#d4f7d4"
+        else:
+            color1 = color2 = "#f0f0f0"  # neutral gray
+
         # --- Court Card Container ---
         st.markdown(
             f"""
-            <div style="border:2px solid #444; border-radius:12px; padding:15px; margin:10px 0; background-color:#f9f9f9;">
-                <h2 style="text-align:center; margin-top:0;">Court {i+1}</h2>
+            <div style="border:2px solid #222; border-radius:12px; padding:15px; margin:10px 0; background-color:#ffffff;">
+                <h2 style="text-align:center; margin-top:0; color:#000000;">Court {i+1}</h2>
             </div>
             """,
             unsafe_allow_html=True
@@ -97,35 +105,37 @@ if st.session_state.round > 0:
         # --- Team 1 (Left) ---
         with col1:
             st.markdown(
-                f"<div style='border:1px solid #ccc; border-radius:8px; padding:8px; text-align:center; background:#fff;'>"
-                f"<b>{p1}</b><br><b>{p2}</b></div>",
+                f"<div style='border:2px solid #888; border-radius:8px; padding:10px; text-align:center; background:{color1};'>"
+                f"<span style='font-size:22px; font-weight:bold; color:#000;'>{p1}</span><br>"
+                f"<span style='font-size:22px; font-weight:bold; color:#000;'>{p2}</span></div>",
                 unsafe_allow_html=True
             )
             st.write("")
             if st.button("⬆️", key=f"{key}_t1_up"):
                 if s1 + s2 < max_score:
                     s1 += 1
-            st.markdown(f"<h2 style='text-align:center;'>{s1}</h2>", unsafe_allow_html=True)
+            st.markdown(f"<h2 style='text-align:center; color:#000;'>{s1}</h2>", unsafe_allow_html=True)
             if st.button("⬇️", key=f"{key}_t1_down"):
                 if s1 > 0:
                     s1 -= 1
 
         # --- Spacer ("VS") ---
         with col_mid:
-            st.markdown("<h3 style='text-align:center; margin-top:40px;'>VS</h3>", unsafe_allow_html=True)
+            st.markdown("<h3 style='text-align:center; margin-top:40px; color:#000;'>VS</h3>", unsafe_allow_html=True)
 
         # --- Team 2 (Right) ---
         with col2:
             st.markdown(
-                f"<div style='border:1px solid #ccc; border-radius:8px; padding:8px; text-align:center; background:#fff;'>"
-                f"<b>{p3}</b><br><b>{p4}</b></div>",
+                f"<div style='border:2px solid #888; border-radius:8px; padding:10px; text-align:center; background:{color2};'>"
+                f"<span style='font-size:22px; font-weight:bold; color:#000;'>{p3}</span><br>"
+                f"<span style='font-size:22px; font-weight:bold; color:#000;'>{p4}</span></div>",
                 unsafe_allow_html=True
             )
             st.write("")
             if st.button("⬆️", key=f"{key}_t2_up"):
                 if s1 + s2 < max_score:
                     s2 += 1
-            st.markdown(f"<h2 style='text-align:center;'>{s2}</h2>", unsafe_allow_html=True)
+            st.markdown(f"<h2 style='text-align:center; color:#000;'>{s2}</h2>", unsafe_allow_html=True)
             if st.button("⬇️", key=f"{key}_t2_down"):
                 if s2 > 0:
                     s2 -= 1
