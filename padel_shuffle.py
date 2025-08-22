@@ -1,221 +1,101 @@
 import streamlit as st
 import random
+import pandas as pd
 
-# ============================================================
-# 🔹 INITIAL SETUP (Session State)
-# ============================================================
+# -------------------- HEADER --------------------
+st.title("Padel Americano Tournament")
+
+# -------------------- SESSION STATE --------------------
 if "players" not in st.session_state:
     st.session_state.players = []
-if "num_courts" not in st.session_state:
-    st.session_state.num_courts = 1
-if "round" not in st.session_state:
-    st.session_state.round = 0
+if "matches" not in st.session_state:
+    st.session_state.matches = []
 if "scores" not in st.session_state:
     st.session_state.scores = {}
-if "leaderboard" not in st.session_state:
-    st.session_state.leaderboard = {}
-if "game_point" not in st.session_state:
-    st.session_state.game_point = 15
-if "matches" not in st.session_state:
-    st.session_state.matches = []   # store fixed matches per round
-
-st.title("🎾 Padel Americano Shuffle")
-
-# ============================================================
-# 🔹 TOURNAMENT SETUP FORM
-# ============================================================
-with st.form("setup"):
-    names = st.text_area("Enter player names (one per line):")
-    num_courts = st.number_input("Number of courts", 1, 10, 1)
-    game_point = st.number_input("Game Point", 5, 30, 15)
-    start = st.form_submit_button("Start Tournament")
-
-    if start:
-        st.session_state.players = [n.strip() for n in names.splitlines() if n.strip()]
-        random.shuffle(st.session_state.players)
-        st.session_state.num_courts = num_courts
-        st.session_state.game_point = game_point
-        st.session_state.round = 1
-        st.session_state.scores = {}
-        # Leaderboard now stores [total_score, games_played]
-        st.session_state.leaderboard = {p: [0, 0] for p in st.session_state.players}
-        st.session_state.matches = []
-        st.rerun()
-
-# ============================================================
-# 🔹 RESET BUTTON
-# ============================================================
-if st.button("🔄 Reset Tournament"):
-    st.session_state.players = []
-    st.session_state.num_courts = 1
+if "games_played" not in st.session_state:
+    st.session_state.games_played = {}
+if "round" not in st.session_state:
     st.session_state.round = 0
-    st.session_state.scores = {}
-    st.session_state.leaderboard = {}
+
+# -------------------- INPUT SECTION --------------------
+st.sidebar.header("Setup")
+player_input = st.sidebar.text_area("Enter player names (one per line)")
+courts = st.sidebar.number_input("Number of Courts", min_value=1, value=1)
+game_point = st.sidebar.number_input("Game Point", min_value=1, value=21)
+
+if st.sidebar.button("Start Tournament"):
+    st.session_state.players = [p.strip() for p in player_input.split("\n") if p.strip()]
     st.session_state.matches = []
+    st.session_state.scores = {}
+    st.session_state.games_played = {p: 0 for p in st.session_state.players}
+    st.session_state.round = 0
     st.rerun()
 
-# ============================================================
-# 🔹 ROUND HANDLING
-# ============================================================
-if st.session_state.round > 0:
-    st.subheader(f"Round {st.session_state.round}")
+# -------------------- SOFT-BIASED SHUFFLE FUNCTION --------------------
+def biased_shuffle(players, games_played, courts):
+    # Sort players by games played (ascending)
+    sorted_players = sorted(players, key=lambda p: (games_played[p], random.random()))
+    matches = []
+    for c in range(courts):
+        if len(sorted_players) >= 4:
+            p1, p2, p3, p4 = sorted_players[:4]
+            sorted_players = sorted_players[4:]
+            matches.append(((p1, p2), (p3, p4)))
+    return matches
 
-    # --- Generate matches ONCE per round ---
-    if not st.session_state.matches:
-        players = st.session_state.players.copy()
-        random.shuffle(players)
-        matches = []
-        for c in range(st.session_state.num_courts):
-            group = players[c*4:(c+1)*4]
-            if len(group) < 4:
-                continue
-            matches.append(((group[0], group[1]), (group[2], group[3])))
-        st.session_state.matches = matches
+# -------------------- NEXT ROUND --------------------
+if st.button("Next Round"):
+    st.session_state.round += 1
+    active_matches = biased_shuffle(st.session_state.players, st.session_state.games_played, courts)
+    st.session_state.matches = active_matches
+    for team1, team2 in active_matches:
+        for p in team1 + team2:
+            st.session_state.games_played[p] += 1
+        st.session_state.scores[(team1, team2)] = [0, 0]
+    st.rerun()
 
-    # ============================================================
-    # 🔹 MATCHES UI (Court Card with Teams & Scores)
-    # ============================================================
-    for i, ((p1, p2), (p3, p4)) in enumerate(st.session_state.matches):
-        key = f"round{st.session_state.round}_court{i}"
-        if key not in st.session_state.scores:
-            st.session_state.scores[key] = [0, 0]  # [team1, team2]
+# -------------------- MATCH DISPLAY --------------------
+if st.session_state.matches:
+    st.header(f"Round {st.session_state.round}")
 
-        s1, s2 = st.session_state.scores[key]
-        max_score = st.session_state.game_point
+    for i, (team1, team2) in enumerate(st.session_state.matches, 1):
+        col1, colvs, col2 = st.columns([4, 1, 4])
 
-        # Determine highlight colors
-        if s1 > s2:
-            color1, color2 = "#d4f7d4", "#f9d6d5"  # green, red
-        elif s2 > s1:
-            color1, color2 = "#f9d6d5", "#d4f7d4"
-        else:
-            color1 = color2 = "#f0f0f0"  # neutral gray
-
-        # --- Court Card Container ---
-        st.markdown(
-            f"""
-            <div style="border:2px solid #222; border-radius:12px; padding:15px; margin:10px 0; background-color:#ffffff;">
-                <h2 style="text-align:center; margin-top:0; color:#000000;">Court {i+1}</h2>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-
-        col1, col_mid, col2 = st.columns([3, 4, 3])
-
-        # --- Team 1 (Left) ---
         with col1:
-            st.markdown(
-                f"<div style='border:2px solid #888; border-radius:8px; padding:10px; text-align:center; background:{color1};'>"
-                f"<span style='font-size:22px; font-weight:bold; color:#000;'>{p1}</span><br>"
-                f"<span style='font-size:22px; font-weight:bold; color:#000;'>{p2}</span></div>",
-                unsafe_allow_html=True
-            )
+            st.markdown(f"<div style='font-size:22px; font-weight:bold; background:white; border:2px solid black; padding:10px; text-align:center'>{team1[0]} & {team1[1]}</div>", unsafe_allow_html=True)
+            if st.button("▲", key=f"up1_{i}"):
+                if st.session_state.scores[(team1, team2)][0] < game_point and st.session_state.scores[(team1, team2)][0] + st.session_state.scores[(team1, team2)][1] < game_point:
+                    st.session_state.scores[(team1, team2)][0] += 1
+                    st.rerun()
+            st.markdown(f"<div style='font-size:26px; font-weight:bold; background:white; border:2px solid black; padding:10px; text-align:center'>{st.session_state.scores[(team1, team2)][0]}</div>", unsafe_allow_html=True)
+            if st.button("▼", key=f"down1_{i}"):
+                if st.session_state.scores[(team1, team2)][0] > 0:
+                    st.session_state.scores[(team1, team2)][0] -= 1
+                    st.rerun()
 
-        # --- Score & VS (Middle) ---
-        with col_mid:
-            sc1, vs, sc2 = st.columns([1,1,1])
+        with colvs:
+            st.markdown(f"<div style='font-size:22px; font-weight:bold; background:white; border:2px solid black; padding:40px 5px; text-align:center'>VS</div>", unsafe_allow_html=True)
 
-            # Team 1 score
-            with sc1:
-                if st.button("⬆️", key=f"{key}_t1_up"):
-                    if s1 + s2 < max_score:
-                        s1 += 1
-                        st.session_state.scores[key] = [s1, s2]
-                        st.rerun()
-                st.markdown(
-                    f"<div style='border:2px solid #000; border-radius:8px; padding:10px; background:#fff; text-align:center;'>"
-                    f"<span style='font-size:28px; font-weight:bold; color:#000;'>{s1}</span></div>",
-                    unsafe_allow_html=True
-                )
-                if st.button("⬇️", key=f"{key}_t1_down"):
-                    if s1 > 0:
-                        s1 -= 1
-                        st.session_state.scores[key] = [s1, s2]
-                        st.rerun()
-
-            # VS in the middle
-            with vs:
-                st.markdown(
-                    f"<div style='border:2px solid #000; border-radius:8px; padding:10px; background:#fff; text-align:center;'>"
-                    f"<span style='font-size:20px; font-weight:bold; color:#000;'>VS</span></div>",
-                    unsafe_allow_html=True
-                )
-
-            # Team 2 score
-            with sc2:
-                if st.button("⬆️", key=f"{key}_t2_up"):
-                    if s1 + s2 < max_score:
-                        s2 += 1
-                        st.session_state.scores[key] = [s1, s2]
-                        st.rerun()
-                st.markdown(
-                    f"<div style='border:2px solid #000; border-radius:8px; padding:10px; background:#fff; text-align:center;'>"
-                    f"<span style='font-size:28px; font-weight:bold; color:#000;'>{s2}</span></div>",
-                    unsafe_allow_html=True
-                )
-                if st.button("⬇️", key=f"{key}_t2_down"):
-                    if s2 > 0:
-                        s2 -= 1
-                        st.session_state.scores[key] = [s1, s2]
-                        st.rerun()
-
-        # --- Team 2 (Right) ---
         with col2:
-            st.markdown(
-                f"<div style='border:2px solid #888; border-radius:8px; padding:10px; text-align:center; background:{color2};'>"
-                f"<span style='font-size:22px; font-weight:bold; color:#000;'>{p3}</span><br>"
-                f"<span style='font-size:22px; font-weight:bold; color:#000;'>{p4}</span></div>",
-                unsafe_allow_html=True
-            )
+            st.markdown(f"<div style='font-size:22px; font-weight:bold; background:white; border:2px solid black; padding:10px; text-align:center'>{team2[0]} & {team2[1]}</div>", unsafe_allow_html=True)
+            if st.button("▲", key=f"up2_{i}"):
+                if st.session_state.scores[(team1, team2)][1] < game_point and st.session_state.scores[(team1, team2)][0] + st.session_state.scores[(team1, team2)][1] < game_point:
+                    st.session_state.scores[(team1, team2)][1] += 1
+                    st.rerun()
+            st.markdown(f"<div style='font-size:26px; font-weight:bold; background:white; border:2px solid black; padding:10px; text-align:center'>{st.session_state.scores[(team1, team2)][1]}</div>", unsafe_allow_html=True)
+            if st.button("▼", key=f"down2_{i}"):
+                if st.session_state.scores[(team1, team2)][1] > 0:
+                    st.session_state.scores[(team1, team2)][1] -= 1
+                    st.rerun()
 
-    # ============================================================
-    # 🔹 COMPLETE ROUND BUTTON
-    # ============================================================
-    if st.button("✅ Complete Round"):
-        for i, ((p1, p2), (p3, p4)) in enumerate(st.session_state.matches):
-            key = f"round{st.session_state.round}_court{i}"
-            s1, s2 = st.session_state.scores[key]
-
-            # Update scores & games played
-            st.session_state.leaderboard[p1][0] += s1
-            st.session_state.leaderboard[p2][0] += s1
-            st.session_state.leaderboard[p3][0] += s2
-            st.session_state.leaderboard[p4][0] += s2
-
-            st.session_state.leaderboard[p1][1] += 1
-            st.session_state.leaderboard[p2][1] += 1
-            st.session_state.leaderboard[p3][1] += 1
-            st.session_state.leaderboard[p4][1] += 1
-
-        st.session_state.matches = []  # reset matches for next round
-        st.session_state.round += 1
-        st.rerun()
-
-    # ============================================================
-    # 🔹 LEADERBOARD (Rank | Name | Games | Score)
-    # ============================================================
-    st.markdown(
-        "<div style='border:2px solid #222; border-radius:12px; padding:15px; margin:20px 0; background-color:#ffffff;'>"
-        "<h2 style='text-align:center; color:#000;'>🏆 Leaderboard</h2></div>",
-        unsafe_allow_html=True
-    )
-
-    sorted_lb = sorted(st.session_state.leaderboard.items(), key=lambda x: (x[1][0]), reverse=True)
-
-    st.markdown(
-        f"<div style='display:flex; font-weight:bold; border-bottom:2px solid #000; padding:5px;'>"
-        f"<div style='flex:1;'>Rank</div><div style='flex:3;'>Name</div><div style='flex:2;'># of Games Played</div><div style='flex:2;'>Score</div></div>",
-        unsafe_allow_html=True
-    )
-
-    for rank, (name, (score, games)) in enumerate(sorted_lb, start=1):
-        st.markdown(
-            f"<div style='display:flex; border-bottom:1px solid #aaa; padding:5px;'>"
-            f"<div style='flex:1;'>{rank}</div>"
-            f"<div style='flex:3;'>{name}</div>"
-            f"<div style='flex:2;'>{games}</div>"
-            f"<div style='flex:2;'>{score}</div></div>",
-            unsafe_allow_html=True
-        )
-
+# -------------------- LEADERBOARD --------------------
+st.header("Leaderboard")
+leaderboard = pd.DataFrame([
+    {"Player": p, "Games Played": st.session_state.games_played[p], "Score": sum(v[i] for (t1, t2), v in st.session_state.scores.items() if p in t1+ t2 and ((i:=0) if p in t1 else (i:=1))==i)}
+    for p in st.session_state.players
+])
+leaderboard = leaderboard.sort_values(by=["Score", "Games Played"], ascending=[False, True]).reset_index(drop=True)
+leaderboard.index += 1
+leaderboard["Rank"] = leaderboard.index
+leaderboard = leaderboard[["Rank", "Player", "Games Played", "Score"]]
+st.dataframe(leaderboard, use_container_width=True)
