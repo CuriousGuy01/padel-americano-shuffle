@@ -100,7 +100,7 @@ if st.session_state.round > 0:
             unsafe_allow_html=True
         )
 
-        col1, col_mid, col2 = st.columns([3, 1, 3])
+        col1, col_mid, col2 = st.columns([3, 4, 3])
 
         # --- Team 1 (Left) ---
         with col1:
@@ -110,18 +110,30 @@ if st.session_state.round > 0:
                 f"<span style='font-size:22px; font-weight:bold; color:#000;'>{p2}</span></div>",
                 unsafe_allow_html=True
             )
-            st.write("")
-            if st.button("⬆️", key=f"{key}_t1_up"):
-                if s1 + s2 < max_score:
-                    s1 += 1
-            st.markdown(f"<h2 style='text-align:center; color:#000;'>{s1}</h2>", unsafe_allow_html=True)
-            if st.button("⬇️", key=f"{key}_t1_down"):
-                if s1 > 0:
-                    s1 -= 1
 
-        # --- Spacer ("VS") ---
+        # --- Score & Arrows (Middle) ---
         with col_mid:
-            st.markdown("<h3 style='text-align:center; margin-top:40px; color:#000;'>VS</h3>", unsafe_allow_html=True)
+            sc1, sc2 = st.columns(2)
+
+            with sc1:
+                if st.button("⬆️", key=f"{key}_t1_up"):
+                    if s1 + s2 < max_score:
+                        s1 += 1
+                st.markdown(f"<h1 style='text-align:center; color:#000;'>{s1}</h1>", unsafe_allow_html=True)
+                if st.button("⬇️", key=f"{key}_t1_down"):
+                    if s1 > 0:
+                        s1 -= 1
+
+            with sc2:
+                if st.button("⬆️", key=f"{key}_t2_up"):
+                    if s1 + s2 < max_score:
+                        s2 += 1
+                st.markdown(f"<h1 style='text-align:center; color:#000;'>{s2}</h1>", unsafe_allow_html=True)
+                if st.button("⬇️", key=f"{key}_t2_down"):
+                    if s2 > 0:
+                        s2 -= 1
+
+            st.markdown("<h3 style='text-align:center; margin:10px; color:#000;'>VS</h3>", unsafe_allow_html=True)
 
         # --- Team 2 (Right) ---
         with col2:
@@ -131,14 +143,6 @@ if st.session_state.round > 0:
                 f"<span style='font-size:22px; font-weight:bold; color:#000;'>{p4}</span></div>",
                 unsafe_allow_html=True
             )
-            st.write("")
-            if st.button("⬆️", key=f"{key}_t2_up"):
-                if s1 + s2 < max_score:
-                    s2 += 1
-            st.markdown(f"<h2 style='text-align:center; color:#000;'>{s2}</h2>", unsafe_allow_html=True)
-            if st.button("⬇️", key=f"{key}_t2_down"):
-                if s2 > 0:
-                    s2 -= 1
 
         # Save updated scores
         st.session_state.scores[key] = [s1, s2]
@@ -160,9 +164,20 @@ if st.session_state.round > 0:
         st.rerun()
 
     # ============================================================
-    # 🔹 LEADERBOARD
+    # 🔹 LEADERBOARD (Card UI)
     # ============================================================
-    st.subheader("🏆 Leaderboard")
+    st.markdown(
+        "<div style='border:2px solid #222; border-radius:12px; padding:15px; margin:20px 0; background-color:#ffffff;'>"
+        "<h2 style='text-align:center; color:#000;'>🏆 Leaderboard</h2></div>",
+        unsafe_allow_html=True
+    )
+
     sorted_lb = sorted(st.session_state.leaderboard.items(), key=lambda x: x[1], reverse=True)
-    for name, score in sorted_lb:
-        st.write(f"{name}: {score}")
+
+    for rank, (name, score) in enumerate(sorted_lb, start=1):
+        st.markdown(
+            f"<div style='border:1px solid #888; border-radius:8px; padding:8px; margin:5px 0; background:#f7f7f7;'>"
+            f"<b style='color:#000;'>{rank}. {name}</b> "
+            f"<span style='float:right; font-size:18px; font-weight:bold; color:#000;'>{score}</span></div>",
+            unsafe_allow_html=True
+        )
