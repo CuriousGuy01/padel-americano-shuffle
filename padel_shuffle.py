@@ -205,7 +205,7 @@ if st.session_state.round > 0:
 
     st.markdown(
         f"<div style='display:flex; font-weight:bold; border-bottom:2px solid #000; padding:5px;'>"
-        f"<div style='flex:1;'>Rank</div><div style='flex:3;'>Name</div><div style='flex:2;'>Games</div><div style='flex:2;'>Score</div></div>",
+        f"<div style='flex:1;'>Rank</div><div style='flex:3;'>Name</div><div style='flex:2;'># of Games Played</div><div style='flex:2;'>Score</div></div>",
         unsafe_allow_html=True
     )
 
@@ -218,3 +218,4 @@ if st.session_state.round > 0:
             f"<div style='flex:2;'>{score}</div></div>",
             unsafe_allow_html=True
         )
+
