@@ -37,7 +37,8 @@ with st.form("setup"):
         st.session_state.game_point = game_point
         st.session_state.round = 1
         st.session_state.scores = {}
-        st.session_state.leaderboard = {p: 0 for p in st.session_state.players}
+        # Leaderboard now stores [total_score, games_played]
+        st.session_state.leaderboard = {p: [0, 0] for p in st.session_state.players}
         st.session_state.matches = []
         st.rerun()
 
@@ -111,29 +112,53 @@ if st.session_state.round > 0:
                 unsafe_allow_html=True
             )
 
-        # --- Score & Arrows (Middle) ---
+        # --- Score & VS (Middle) ---
         with col_mid:
-            sc1, sc2 = st.columns(2)
+            sc1, vs, sc2 = st.columns([1,1,1])
 
+            # Team 1 score
             with sc1:
                 if st.button("⬆️", key=f"{key}_t1_up"):
                     if s1 + s2 < max_score:
                         s1 += 1
-                st.markdown(f"<h1 style='text-align:center; color:#000;'>{s1}</h1>", unsafe_allow_html=True)
+                        st.session_state.scores[key] = [s1, s2]
+                        st.rerun()
+                st.markdown(
+                    f"<div style='border:2px solid #000; border-radius:8px; padding:10px; background:#fff; text-align:center;'>"
+                    f"<span style='font-size:28px; font-weight:bold; color:#000;'>{s1}</span></div>",
+                    unsafe_allow_html=True
+                )
                 if st.button("⬇️", key=f"{key}_t1_down"):
                     if s1 > 0:
                         s1 -= 1
+                        st.session_state.scores[key] = [s1, s2]
+                        st.rerun()
 
+            # VS in the middle
+            with vs:
+                st.markdown(
+                    f"<div style='border:2px solid #000; border-radius:8px; padding:10px; background:#fff; text-align:center;'>"
+                    f"<span style='font-size:20px; font-weight:bold; color:#000;'>VS</span></div>",
+                    unsafe_allow_html=True
+                )
+
+            # Team 2 score
             with sc2:
                 if st.button("⬆️", key=f"{key}_t2_up"):
                     if s1 + s2 < max_score:
                         s2 += 1
-                st.markdown(f"<h1 style='text-align:center; color:#000;'>{s2}</h1>", unsafe_allow_html=True)
+                        st.session_state.scores[key] = [s1, s2]
+                        st.rerun()
+                st.markdown(
+                    f"<div style='border:2px solid #000; border-radius:8px; padding:10px; background:#fff; text-align:center;'>"
+                    f"<span style='font-size:28px; font-weight:bold; color:#000;'>{s2}</span></div>",
+                    unsafe_allow_html=True
+                )
                 if st.button("⬇️", key=f"{key}_t2_down"):
                     if s2 > 0:
                         s2 -= 1
-
-            st.markdown("<h3 style='text-align:center; margin:10px; color:#000;'>VS</h3>", unsafe_allow_html=True)
+                        st.session_state.scores[key] = [s1, s2]
+                        st.rerun()
 
         # --- Team 2 (Right) ---
         with col2:
@@ -144,9 +169,6 @@ if st.session_state.round > 0:
                 unsafe_allow_html=True
             )
 
-        # Save updated scores
-        st.session_state.scores[key] = [s1, s2]
-
     # ============================================================
     # 🔹 COMPLETE ROUND BUTTON
     # ============================================================
@@ -154,17 +176,24 @@ if st.session_state.round > 0:
         for i, ((p1, p2), (p3, p4)) in enumerate(st.session_state.matches):
             key = f"round{st.session_state.round}_court{i}"
             s1, s2 = st.session_state.scores[key]
-            st.session_state.leaderboard[p1] += s1
-            st.session_state.leaderboard[p2] += s1
-            st.session_state.leaderboard[p3] += s2
-            st.session_state.leaderboard[p4] += s2
+
+            # Update scores & games played
+            st.session_state.leaderboard[p1][0] += s1
+            st.session_state.leaderboard[p2][0] += s1
+            st.session_state.leaderboard[p3][0] += s2
+            st.session_state.leaderboard[p4][0] += s2
+
+            st.session_state.leaderboard[p1][1] += 1
+            st.session_state.leaderboard[p2][1] += 1
+            st.session_state.leaderboard[p3][1] += 1
+            st.session_state.leaderboard[p4][1] += 1
 
         st.session_state.matches = []  # reset matches for next round
         st.session_state.round += 1
         st.rerun()
 
     # ============================================================
-    # 🔹 LEADERBOARD (Card UI)
+    # 🔹 LEADERBOARD (Rank | Name | Games | Score)
     # ============================================================
     st.markdown(
         "<div style='border:2px solid #222; border-radius:12px; padding:15px; margin:20px 0; background-color:#ffffff;'>"
@@ -172,12 +201,20 @@ if st.session_state.round > 0:
         unsafe_allow_html=True
     )
 
-    sorted_lb = sorted(st.session_state.leaderboard.items(), key=lambda x: x[1], reverse=True)
+    sorted_lb = sorted(st.session_state.leaderboard.items(), key=lambda x: (x[1][0]), reverse=True)
 
-    for rank, (name, score) in enumerate(sorted_lb, start=1):
+    st.markdown(
+        f"<div style='display:flex; font-weight:bold; border-bottom:2px solid #000; padding:5px;'>"
+        f"<div style='flex:1;'>Rank</div><div style='flex:3;'>Name</div><div style='flex:2;'>Games</div><div style='flex:2;'>Score</div></div>",
+        unsafe_allow_html=True
+    )
+
+    for rank, (name, (score, games)) in enumerate(sorted_lb, start=1):
         st.markdown(
-            f"<div style='border:1px solid #888; border-radius:8px; padding:8px; margin:5px 0; background:#f7f7f7;'>"
-            f"<b style='color:#000;'>{rank}. {name}</b> "
-            f"<span style='float:right; font-size:18px; font-weight:bold; color:#000;'>{score}</span></div>",
+            f"<div style='display:flex; border-bottom:1px solid #aaa; padding:5px;'>"
+            f"<div style='flex:1;'>{rank}</div>"
+            f"<div style='flex:3;'>{name}</div>"
+            f"<div style='flex:2;'>{games}</div>"
+            f"<div style='flex:2;'>{score}</div></div>",
             unsafe_allow_html=True
         )
