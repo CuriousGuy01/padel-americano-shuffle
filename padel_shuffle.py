@@ -69,6 +69,19 @@ if st.session_state.players:
 
     new_scores = {}
 
+    def score_callback(score_key, other_score_key, last_edited_key):
+        # Called when user changes a score
+        st.session_state[last_edited_key] = score_key
+        # Clamp the value to be between 0 and game_point
+        value = st.session_state[score_key]
+        if value > st.session_state.game_point:
+            value = st.session_state.game_point
+            st.session_state[score_key] = value
+        elif value < 0:
+            value = 0
+            st.session_state[score_key] = value
+        st.session_state[other_score_key] = st.session_state.game_point - value
+
     for court, match in enumerate(st.session_state.current_matches, 1):
         team_a, team_b = match
 
@@ -105,43 +118,31 @@ if st.session_state.players:
             if score_a_key not in st.session_state:
                 st.session_state[score_a_key] = 0
             if score_b_key not in st.session_state:
-                st.session_state[score_b_key] = 0
+                st.session_state[score_b_key] = st.session_state.game_point
             if last_edited_key not in st.session_state:
-                st.session_state[last_edited_key] = "a"
+                st.session_state[last_edited_key] = score_a_key
 
             colA, colB = st.columns(2)
-
-            def on_change_a():
-                st.session_state[last_edited_key] = "a"
-            def on_change_b():
-                st.session_state[last_edited_key] = "b"
-
             with colA:
-                score_a = st.number_input(
+                st.number_input(
                     f"Score for {team_a[0]} & {team_a[1]} (0-{st.session_state.game_point})",
                     min_value=0,
                     max_value=st.session_state.game_point,
                     value=st.session_state[score_a_key],
                     key=score_a_key,
-                    on_change=on_change_a,
+                    on_change=score_callback,
+                    args=(score_a_key, score_b_key, last_edited_key),
                 )
             with colB:
-                score_b = st.number_input(
+                st.number_input(
                     f"Score for {team_b[0]} & {team_b[1]} (0-{st.session_state.game_point})",
                     min_value=0,
                     max_value=st.session_state.game_point,
                     value=st.session_state[score_b_key],
                     key=score_b_key,
-                    on_change=on_change_b,
+                    on_change=score_callback,
+                    args=(score_b_key, score_a_key, last_edited_key),
                 )
-
-            # Logic to update the other score based on which one was edited last
-            # This runs every rerun, so we only update if the sum is not game_point
-            # and only one box is edited, so it doesn't fight the user's last action.
-            if st.session_state[last_edited_key] == "a":
-                st.session_state[score_b_key] = st.session_state.game_point - st.session_state[score_a_key]
-            elif st.session_state[last_edited_key] == "b":
-                st.session_state[score_a_key] = st.session_state.game_point - st.session_state[score_b_key]
 
             # Use the values from session_state for consistency
             score_a_val = st.session_state[score_a_key]
