@@ -96,28 +96,56 @@ if st.session_state.players:
                     unsafe_allow_html=True,
                 )
 
-            # --- Score input (text boxes instead of spinner) ---
+            # --- Score input (paired number_input boxes with game point logic) ---
+            score_a_key = f"score_a_{court}_{st.session_state.round}"
+            score_b_key = f"score_b_{court}_{st.session_state.round}"
+            last_edited_key = f"last_edited_{court}_{st.session_state.round}"
+
+            # Initialize states if not present
+            if score_a_key not in st.session_state:
+                st.session_state[score_a_key] = 0
+            if score_b_key not in st.session_state:
+                st.session_state[score_b_key] = 0
+            if last_edited_key not in st.session_state:
+                st.session_state[last_edited_key] = "a"
+
             colA, colB = st.columns(2)
+
+            def on_change_a():
+                st.session_state[last_edited_key] = "a"
+            def on_change_b():
+                st.session_state[last_edited_key] = "b"
+
             with colA:
-                score_a = st.text_input(
+                score_a = st.number_input(
                     f"Score for {team_a[0]} & {team_a[1]} (0-{st.session_state.game_point})",
-                    key=f"score_a_{court}_{st.session_state.round}",
+                    min_value=0,
+                    max_value=st.session_state.game_point,
+                    value=st.session_state[score_a_key],
+                    key=score_a_key,
+                    on_change=on_change_a,
                 )
             with colB:
-                score_b = st.text_input(
+                score_b = st.number_input(
                     f"Score for {team_b[0]} & {team_b[1]} (0-{st.session_state.game_point})",
-                    key=f"score_b_{court}_{st.session_state.round}",
+                    min_value=0,
+                    max_value=st.session_state.game_point,
+                    value=st.session_state[score_b_key],
+                    key=score_b_key,
+                    on_change=on_change_b,
                 )
 
-            # Validate conversion to int (default 0 if empty/invalid)
-            try:
-                score_a_val = int(score_a)
-            except:
-                score_a_val = 0
-            try:
-                score_b_val = int(score_b)
-            except:
-                score_b_val = 0
+            # Logic to update the other score based on which one was edited last
+            # This runs every rerun, so we only update if the sum is not game_point
+            # and only one box is edited, so it doesn't fight the user's last action.
+            if st.session_state[last_edited_key] == "a":
+                st.session_state[score_b_key] = st.session_state.game_point - st.session_state[score_a_key]
+            elif st.session_state[last_edited_key] == "b":
+                st.session_state[score_a_key] = st.session_state.game_point - st.session_state[score_b_key]
+
+            # Use the values from session_state for consistency
+            score_a_val = st.session_state[score_a_key]
+            score_b_val = st.session_state[score_b_key]
 
             new_scores[(team_a, team_b)] = (score_a_val, score_b_val)
 
