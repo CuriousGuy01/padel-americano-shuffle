@@ -78,42 +78,48 @@ if st.session_state.players:
 
             with col1:
                 st.markdown(
-                    f"<div style='border:2px solid black; background:white; padding:10px; font-size:20px; font-weight:bold; text-align:center;'>"
+                    f"<div style='border:2px solid black; background:white; padding:10px; font-size:22px; font-weight:bold; text-align:center; color:black;'>"
                     f"{team_a[0]} & {team_a[1]}</div>",
                     unsafe_allow_html=True,
                 )
 
             with col2:
                 st.markdown(
-                    "<div style='border:2px solid black; background:white; padding:10px; font-size:20px; font-weight:bold; text-align:center;'>VS</div>",
+                    "<div style='border:2px solid black; background:white; padding:10px; font-size:22px; font-weight:bold; text-align:center; color:black;'>VS</div>",
                     unsafe_allow_html=True,
                 )
 
             with col3:
                 st.markdown(
-                    f"<div style='border:2px solid black; background:white; padding:10px; font-size:20px; font-weight:bold; text-align:center;'>"
+                    f"<div style='border:2px solid black; background:white; padding:10px; font-size:22px; font-weight:bold; text-align:center; color:black;'>"
                     f"{team_b[0]} & {team_b[1]}</div>",
                     unsafe_allow_html=True,
                 )
 
-            # Score input
+            # --- Score input (text boxes instead of spinner) ---
             colA, colB = st.columns(2)
             with colA:
-                score_a = st.number_input(
-                    f"Score for {team_a[0]} & {team_a[1]}",
-                    min_value=0,
-                    max_value=st.session_state.game_point,
+                score_a = st.text_input(
+                    f"Score for {team_a[0]} & {team_a[1]} (0-{st.session_state.game_point})",
                     key=f"score_a_{court}_{st.session_state.round}",
                 )
-                score_b = st.session_state.game_point - score_a
             with colB:
-                st.markdown(
-                    f"<div style='border:2px solid black; background:white; padding:10px; font-size:18px; font-weight:bold; text-align:center;'>"
-                    f"Auto: {score_b}</div>",
-                    unsafe_allow_html=True,
+                score_b = st.text_input(
+                    f"Score for {team_b[0]} & {team_b[1]} (0-{st.session_state.game_point})",
+                    key=f"score_b_{court}_{st.session_state.round}",
                 )
 
-            new_scores[(team_a, team_b)] = (score_a, score_b)
+            # Validate conversion to int (default 0 if empty/invalid)
+            try:
+                score_a_val = int(score_a)
+            except:
+                score_a_val = 0
+            try:
+                score_b_val = int(score_b)
+            except:
+                score_b_val = 0
+
+            new_scores[(team_a, team_b)] = (score_a_val, score_b_val)
 
     if st.button("✅ Complete Round"):
         for match, (score_a, score_b) in new_scores.items():
@@ -143,7 +149,7 @@ if st.session_state.players:
 
     # Styled leaderboard table
     st.markdown(
-        "<div style='border:3px solid black; background:white; padding:15px; font-size:18px;'>",
+        "<div style='border:3px solid black; background:white; padding:15px; font-size:20px; color:black;'>",
         unsafe_allow_html=True,
     )
     st.dataframe(leaderboard, use_container_width=True, height=400)
