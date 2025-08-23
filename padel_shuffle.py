@@ -70,16 +70,11 @@ if st.session_state.players:
     new_scores = {}
 
     def score_callback(score_key, other_score_key, last_edited_key):
-        # Called when user changes a score
         st.session_state[last_edited_key] = score_key
-        # Clamp the value to be between 0 and game_point
         value = st.session_state[score_key]
-        if value > st.session_state.game_point:
-            value = st.session_state.game_point
-            st.session_state[score_key] = value
-        elif value < 0:
-            value = 0
-            st.session_state[score_key] = value
+        # Clamp value between 0 and game_point
+        value = max(0, min(value, st.session_state.game_point))
+        st.session_state[score_key] = value
         st.session_state[other_score_key] = st.session_state.game_point - value
 
     for court, match in enumerate(st.session_state.current_matches, 1):
