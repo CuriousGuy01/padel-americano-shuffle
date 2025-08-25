@@ -70,10 +70,10 @@ if st.session_state.players:
     new_scores = {}
 
     def score_callback(score_key, other_score_key, last_edited_key):
+        # Only update inside callback!
         st.session_state[last_edited_key] = score_key
         value = st.session_state[score_key]
-        # Clamp value between 0 and game_point
-        value = max(0, min(value, st.session_state.game_point))
+        value = max(0, min(value, st.session_state.game_point))  # clamp
         st.session_state[score_key] = value
         st.session_state[other_score_key] = st.session_state.game_point - value
 
@@ -104,12 +104,11 @@ if st.session_state.players:
                     unsafe_allow_html=True,
                 )
 
-            # --- Score input (paired number_input boxes with game point logic) ---
             score_a_key = f"score_a_{court}_{st.session_state.round}"
             score_b_key = f"score_b_{court}_{st.session_state.round}"
             last_edited_key = f"last_edited_{court}_{st.session_state.round}"
 
-            # Initialize states if not present
+            # Only initialize if not present!
             if score_a_key not in st.session_state:
                 st.session_state[score_a_key] = 0
             if score_b_key not in st.session_state:
@@ -139,7 +138,6 @@ if st.session_state.players:
                     args=(score_b_key, score_a_key, last_edited_key),
                 )
 
-            # Use the values from session_state for consistency
             score_a_val = st.session_state[score_a_key]
             score_b_val = st.session_state[score_b_key]
 
